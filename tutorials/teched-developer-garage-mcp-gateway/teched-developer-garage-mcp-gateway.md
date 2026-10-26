@@ -107,8 +107,154 @@ Click **Next** to proceed.
     ```
 
     Click **Generate** and wait a few seconds for the specification to be created. Then click **Add and Open in API Designer**.
+   
 
 ![picture](screen8.png)
+
+If the AI-based OpenAPI generation is not available on your tenant, add the operations manually. In the **Code** tab, find the line that reads exactly `paths: {}` and replace it with the block below. Change nothing else — leave your `servers` URL, your `tokenUrl`s, `securitySchemes`, and `security` exactly as Integration Suite generated them, since those are unique to your tenant.
+
+```yaml
+paths:
+  /orders.json:
+    get:
+      summary: Query orders
+      description: Retrieves Shopify orders, optionally filtered by status, financial status, IDs and limit
+      operationId: listOrders
+      tags: [Orders]
+      parameters:
+        - name: status
+          in: query
+          required: false
+          description: Filter by order status. Use any to return all orders.
+          schema: { type: string, enum: [open, closed, cancelled, any], default: open }
+        - name: limit
+          in: query
+          required: false
+          description: Maximum number of orders to return (max 250)
+          schema: { type: integer, minimum: 1, maximum: 250 }
+        - name: financial_status
+          in: query
+          required: false
+          description: Filter by payment status, e.g. paid, pending, refunded, voided
+          schema: { type: string }
+        - name: ids
+          in: query
+          required: false
+          description: Comma-separated list of order IDs
+          schema: { type: string }
+      responses:
+        '200':
+          description: List of orders matching the query
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  orders:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id: { type: integer, format: int64, description: Unique order ID }
+                        name: { type: string, description: 'Order name, e.g. #1001' }
+                        email: { type: string, nullable: true, description: Customer email }
+                        financial_status: { type: string, nullable: true, description: Payment status }
+                        total_price: { type: string, nullable: true, description: 'Total price, e.g. 99.99' }
+                        created_at: { type: string, nullable: true, description: Creation timestamp (ISO 8601) }
+        '400': { description: Bad request }
+        '401': { description: Authentication required }
+        '500': { description: Internal server error }
+    post:
+      summary: Create order
+      description: Creates a new Shopify order (sales order). All details must be wrapped in a top-level order object.
+      operationId: createOrder
+      tags: [Orders]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order]
+              properties:
+                order:
+                  type: object
+                  required: [line_items]
+                  properties:
+                    email: { type: string, description: 'Customer email, e.g. demouser@sap.com' }
+                    financial_status:
+                      type: string
+                      description: Payment status, lowercase
+                      enum: [paid, pending, refunded, voided]
+                    line_items:
+                      type: array
+                      minItems: 1
+                      description: Products in the order (at least one)
+                      items:
+                        type: object
+                        required: [title, price, quantity]
+                        properties:
+                          title: { type: string, description: Product name }
+                          price: { type: string, description: 'Unit price, e.g. 29.99' }
+                          quantity: { type: integer, minimum: 1, description: Number of units }
+      responses:
+        '201':
+          description: Order created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    type: object
+                    required: [id, name]
+                    properties:
+                      id: { type: integer, format: int64, description: Unique order ID }
+                      name: { type: string, description: 'Order name, e.g. #1001' }
+                      total_price: { type: string, nullable: true, description: 'Total price, e.g. 59.98' }
+        '400': { description: Bad request }
+        '401': { description: Authentication required }
+        '422': { description: Unprocessable entity }
+        '500': { description: Internal server error }
+  '/orders/{order_id}.json':
+    get:
+      summary: Get order by ID
+      description: Retrieves a single Shopify order by its ID
+      operationId: getOrderById
+      tags: [Orders]
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          description: Unique numeric ID of the order
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: Order details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  order:
+                    type: object
+                    required: [id, name]
+                    properties:
+                      id: { type: integer, format: int64, description: Unique order ID }
+                      name: { type: string, description: 'Order name, e.g. #1001' }
+                      email: { type: string, nullable: true, description: Customer email }
+                      financial_status: { type: string, nullable: true, description: Payment status }
+                      total_price: { type: string, nullable: true, description: 'Total price, e.g. 99.99' }
+                      created_at: { type: string, nullable: true, description: Creation timestamp (ISO 8601) }
+        '401': { description: Authentication required }
+        '404': { description: Order not found }
+        '500': { description: Internal server error }
+```
+
+After pasting into the API Designer, check that `paths:` sits hard against the left margin and that `components:` still contains only `securitySchemes:`. Then validate the specification at [editor.swagger.io](https://editor.swagger.io), click **Save** and then **Switch to API Details**.
+
+
 
 9. Your new API artifact has been assembled, and you can see the available operations. Click **Switch to API Details** to complete the setup.
 
