@@ -273,7 +273,7 @@ After pasting into the API Designer, check that `paths:` sits hard against the l
 - **Action:** Create
 - **Name:** X-Shopify-Access-Token
 - **Source Type:** Constant
-- **Source Value:** `<shopify-access-token>` (provided by your instructors)
+- **Source Value:** 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
 
 ![picture](screen12.png)
 
